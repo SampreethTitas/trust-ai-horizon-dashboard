@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Upload, FileText, Trash2, AlertTriangle } from "lucide-react";
@@ -9,8 +8,23 @@ import { useToast } from "@/hooks/use-toast";
 import LoadingShimmer from "@/components/LoadingShimmer";
 import ThreatAnalysis from "@/components/ThreatAnalysis";
 
+// Type definitions for API responses
+interface AnalysisResult {
+  threat_level: string;
+  confidence: number;
+  attack_types: string[];
+  recommendation: string;
+  content_type: string;
+  metadata: {
+    pattern_score: number;
+    ml_score: number;
+    processing_time: number;
+    prompt_length: number;
+  };
+}
+
 // Mock analysis function for text content
-const mockAnalyzeContent = (content: string, contentType: string = 'text') => {
+const mockAnalyzeContent = (content: string, contentType: string = 'text'): Promise<AnalysisResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const lowercaseContent = content.toLowerCase();
@@ -66,7 +80,7 @@ const mockAnalyzeContent = (content: string, contentType: string = 'text') => {
 };
 
 // Mock file analysis
-const mockAnalyzeFile = (file: File) => {
+const mockAnalyzeFile = (file: File): Promise<AnalysisResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const fileType = file.name.toLowerCase().includes('email') ? 'email' : 
@@ -113,7 +127,7 @@ const AdShield = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [contentType, setContentType] = useState("text");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyses, setAnalyses] = useState<any[]>([]);
+  const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);

@@ -9,8 +9,27 @@ import LoadingShimmer from "@/components/LoadingShimmer";
 import ThreatAnalysis from "@/components/ThreatAnalysis";
 import GeneratedContent from "@/components/GeneratedContent";
 
+// Type definitions for API responses
+interface AnalysisResult {
+  threat_level: string;
+  confidence: number;
+  attack_types: string[];
+  recommendation: string;
+  content_type: string;
+  metadata: {
+    pattern_score: number;
+    ml_score: number;
+    processing_time: number;
+    prompt_length: number;
+  };
+}
+
+interface GenerationResult {
+  generated_text: string;
+}
+
 // Mock analysis function
-const mockAnalyzePrompt = (prompt: string) => {
+const mockAnalyzePrompt = (prompt: string): Promise<AnalysisResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const lowercasePrompt = prompt.toLowerCase();
@@ -60,7 +79,7 @@ const mockAnalyzePrompt = (prompt: string) => {
 };
 
 // Mock content generation
-const mockGenerateContent = (prompt: string) => {
+const mockGenerateContent = (prompt: string): Promise<GenerationResult> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const templates = [
@@ -82,7 +101,7 @@ const GuardPrompt = () => {
   const [prompt, setPrompt] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [generatedContent, setGeneratedContent] = useState("");
 
   const handleAnalyze = async () => {
