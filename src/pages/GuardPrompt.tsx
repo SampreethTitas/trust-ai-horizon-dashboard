@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Send, Copy, Share } from "lucide-react";
@@ -32,7 +31,7 @@ const GuardPrompt = () => {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch('/analyze', {
+      const response = await fetch('http://127.0.0.1:8056/analyze', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
