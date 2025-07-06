@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -18,6 +19,9 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				'mono': ['Space Mono', 'monospace'],
+			},
 			colors: {
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
@@ -61,6 +65,14 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				neon: {
+					teal: '#14b8a6',
+					magenta: '#d946ef',
+					green: '#10b981',
+					red: '#ef4444',
+					blue: '#3b82f6',
+					yellow: '#f59e0b'
 				}
 			},
 			borderRadius: {
@@ -84,11 +96,30 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'glow-pulse': {
+					'0%, 100%': {
+						boxShadow: '0 0 5px theme(colors.neon.teal), 0 0 10px theme(colors.neon.teal), 0 0 15px theme(colors.neon.teal)'
+					},
+					'50%': {
+						boxShadow: '0 0 10px theme(colors.neon.teal), 0 0 20px theme(colors.neon.teal), 0 0 30px theme(colors.neon.teal)'
+					}
+				},
+				'typewriter': {
+					'0%': { width: '0' },
+					'100%': { width: '100%' }
+				},
+				'shimmer': {
+					'0%': { transform: 'translateX(-100%)' },
+					'100%': { transform: 'translateX(100%)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+				'typewriter': 'typewriter 3s steps(40) 1s forwards',
+				'shimmer': 'shimmer 2s infinite'
 			}
 		}
 	},
