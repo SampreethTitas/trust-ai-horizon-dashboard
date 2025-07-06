@@ -1,26 +1,144 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Upload, FileText, Type } from "lucide-react";
+import { ArrowLeft, Shield, Upload, FileText, Trash2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import LoadingShimmer from "@/components/LoadingShimmer";
 import ThreatAnalysis from "@/components/ThreatAnalysis";
+
+// Mock analysis function for text content
+const mockAnalyzeContent = (content: string, contentType: string = 'text') => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const lowercaseContent = content.toLowerCase();
+      
+      // Different risk patterns for different content types
+      const emailRiskPatterns = ['act fast', 'limited offer', 'dont delay', 'expires soon', 'urgent action'];
+      const socialRiskPatterns = ['follow for follow', 'like if you agree', 'share or miss out', 'tag friends'];
+      const blogRiskPatterns = ['clickbait', 'you wont believe', 'shocking truth', 'secret revealed'];
+      const generalRiskPatterns = ['guaranteed results', 'no questions asked', 'risk free', 'amazing deal'];
+      
+      let riskPatterns = [...generalRiskPatterns];
+      if (contentType === 'email') riskPatterns.push(...emailRiskPatterns);
+      if (contentType === 'social') riskPatterns.push(...socialRiskPatterns);
+      if (contentType === 'blog') riskPatterns.push(...blogRiskPatterns);
+      
+      const hasHighRisk = riskPatterns.some(pattern => lowercaseContent.includes(pattern));
+      const hasMediumRisk = ['free', 'discount', 'special offer', 'limited'].some(pattern => lowercaseContent.includes(pattern));
+      
+      let threatLevel = 'safe';
+      let confidence = 0.82;
+      let attackTypes: string[] = [];
+      let recommendation = "This content appears to be compliant with ethical marketing standards. No significant risks detected.";
+      
+      if (hasHighRisk) {
+        threatLevel = 'high';
+        confidence = 0.94;
+        attackTypes = ['urgency-manipulation', 'false-scarcity'];
+        if (contentType === 'email') attackTypes.push('email-spam-indicators');
+        if (contentType === 'social') attackTypes.push('engagement-baiting');
+        recommendation = "This content contains high-risk elements that may violate platform policies or ethical guidelines. Consider revising the messaging to be more transparent.";
+      } else if (hasMediumRisk) {
+        threatLevel = 'medium';
+        confidence = 0.76;
+        attackTypes = ['promotional-language'];
+        recommendation = "This content contains moderate promotional language. While not harmful, consider adding disclaimers or terms for better compliance.";
+      }
+      
+      resolve({
+        threat_level: threatLevel,
+        confidence: confidence,
+        attack_types: attackTypes,
+        recommendation: recommendation,
+        content_type: contentType,
+        metadata: {
+          pattern_score: Math.random() * 0.7 + 0.2,
+          ml_score: Math.random() * 0.85 + 0.1,
+          processing_time: Math.random() * 200 + 100,
+          prompt_length: content.length
+        }
+      });
+    }, 1800); // Simulate API delay
+  });
+};
+
+// Mock file analysis
+const mockAnalyzeFile = (file: File) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const fileType = file.name.toLowerCase().includes('email') ? 'email' : 
+                      file.name.toLowerCase().includes('social') ? 'social' :
+                      file.name.toLowerCase().includes('blog') ? 'blog' : 'document';
+      
+      // Simulate different risk levels based on file name
+      let threatLevel = 'safe';
+      let attackTypes: string[] = [];
+      
+      if (file.name.toLowerCase().includes('urgent') || file.name.toLowerCase().includes('sale')) {
+        threatLevel = 'high';
+        attackTypes = ['urgency-manipulation', 'sales-pressure'];
+      } else if (file.name.toLowerCase().includes('promo') || file.name.toLowerCase().includes('offer')) {
+        threatLevel = 'medium';
+        attackTypes = ['promotional-language'];
+      }
+      
+      resolve({
+        threat_level: threatLevel,
+        confidence: Math.random() * 0.3 + 0.7,
+        attack_types: attackTypes,
+        recommendation: threatLevel === 'safe' ? 
+          "File content appears to be compliant with marketing standards." :
+          "File contains elements that may need review for compliance.",
+        content_type: fileType,
+        metadata: {
+          pattern_score: Math.random() * 0.8 + 0.1,
+          ml_score: Math.random() * 0.9 + 0.05,
+          processing_time: Math.random() * 300 + 150,
+          prompt_length: Math.floor(Math.random() * 2000) + 500
+        }
+      });
+    }, 2500);
+  });
+};
 
 const AdShield = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
+  const [inputType, setInputType] = useState<'text' | 'file'>('text');
   const [textContent, setTextContent] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [contentType, setContentType] = useState("text");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [analyses, setAnalyses] = useState<any[]>([]);
 
-  const handleTextAnalyze = async () => {
-    if (!textContent.trim()) {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const validFiles = files.filter(file => {
+      const validTypes = ['.txt', '.docx', '.pdf'];
+      return validTypes.some(type => file.name.toLowerCase().endsWith(type));
+    });
+    
+    if (validFiles.length !== files.length) {
+      toast({
+        title: "Invalid Files",
+        description: "Only .txt, .docx, and .pdf files are supported",
+        variant: "destructive"
+      });
+    }
+    
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAnalyze = async () => {
+    if (inputType === 'text' && !textContent.trim()) {
       toast({
         title: "Error",
         description: "Please enter content to analyze",
@@ -28,31 +146,41 @@ const AdShield = () => {
       });
       return;
     }
+    
+    if (inputType === 'file' && selectedFiles.length === 0) {
+      toast({
+        title: "Error", 
+        description: "Please upload at least one file",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsAnalyzing(true);
+    setAnalyses([]);
+    
     try {
-      const response = await fetch('/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt: textContent,
-          user_id: "anonymous",
-          include_pii: true,
-          confidence_threshold: 1
-        })
-      });
-
-      const data = await response.json();
-      setAnalysis({ ...data, content_type: "Text Content" });
-      
-      const isSafe = data.threat_level === 'safe';
-      toast({
-        title: isSafe ? "Content is SAFE ✅" : "Issues Detected 🚫",
-        description: isSafe ? "This content appears to be compliant" : "This content may have compliance issues",
-        variant: isSafe ? "default" : "destructive"
-      });
+      if (inputType === 'text') {
+        const result = await mockAnalyzeContent(textContent, contentType);
+        setAnalyses([result]);
+        
+        const isSafe = result.threat_level === 'safe';
+        toast({
+          title: isSafe ? "Content is SAFE ✅" : "Risks Detected 🚫",
+          description: isSafe ? "Content appears compliant" : "Content contains potential risks"
+        });
+      } else {
+        const results = await Promise.all(
+          selectedFiles.map(file => mockAnalyzeFile(file))
+        );
+        setAnalyses(results);
+        
+        const riskCount = results.filter(r => r.threat_level !== 'safe').length;
+        toast({
+          title: riskCount === 0 ? "All Files SAFE ✅" : `${riskCount} Risk(s) Found 🚫`,
+          description: `Analyzed ${results.length} file(s)`
+        });
+      }
     } catch (error) {
       console.error('Analysis error:', error);
       toast({
@@ -62,71 +190,6 @@ const AdShield = () => {
       });
     } finally {
       setIsAnalyzing(false);
-    }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      setSelectedFiles(files);
-      toast({
-        title: "Files Selected",
-        description: `${files.length} file(s) ready for analysis`
-      });
-    }
-  };
-
-  const handleFileAnalyze = async () => {
-    if (!selectedFiles || selectedFiles.length === 0) {
-      toast({
-        title: "Error", 
-        description: "Please select files to analyze",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsAnalyzing(true);
-    try {
-      const formData = new FormData();
-      Array.from(selectedFiles).forEach(file => {
-        formData.append('files', file);
-      });
-
-      const endpoint = selectedFiles.length === 1 ? '/analyze/file' : '/analyze/files';
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-      setAnalysis({ ...data, content_type: getFileType(selectedFiles[0].name) });
-      
-      const isSafe = data.threat_level === 'safe';
-      toast({
-        title: isSafe ? "Files are SAFE ✅" : "Issues Detected 🚫",
-        description: isSafe ? "All files appear to be compliant" : "Some files may have compliance issues",
-        variant: isSafe ? "default" : "destructive"
-      });
-    } catch (error) {
-      console.error('File analysis error:', error);
-      toast({
-        title: "Analysis Failed",
-        description: "Unable to analyze files. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const getFileType = (filename: string): string => {
-    const extension = filename.split('.').pop()?.toLowerCase();
-    switch (extension) {
-      case 'pdf': return 'PDF Document';
-      case 'docx': case 'doc': return 'Word Document';
-      case 'txt': return 'Text File';
-      default: return 'Document';
     }
   };
 
@@ -140,14 +203,14 @@ const AdShield = () => {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/')}
-              className="text-neon-magenta hover:text-white hover:bg-neon-magenta/20"
+              className="text-neon-teal hover:text-white hover:bg-neon-teal/20"
             >
               <ArrowLeft size={20} className="mr-2" />
               Back to Dashboard
             </Button>
           </div>
           <div className="flex items-center space-x-2">
-            <Search className="text-neon-magenta" size={32} />
+            <Shield className="text-neon-magenta" size={32} />
             <h1 className="text-3xl font-bold text-white">AdShield</h1>
           </div>
         </div>
@@ -159,109 +222,129 @@ const AdShield = () => {
               <div className="p-6">
                 <h2 className="text-xl font-bold text-white mb-4">Content Analysis</h2>
                 
-                <Tabs defaultValue="text" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
-                    <TabsTrigger 
-                      value="text" 
-                      className="data-[state=active]:bg-neon-magenta/20 data-[state=active]:text-neon-magenta"
-                    >
-                      <Type size={16} className="mr-2" />
-                      Text Input
-                    </TabsTrigger>
-                    <TabsTrigger 
-                      value="file"
-                      className="data-[state=active]:bg-neon-magenta/20 data-[state=active]:text-neon-magenta"
-                    >
-                      <Upload size={16} className="mr-2" />
-                      File Upload
-                    </TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="text" className="space-y-4">
+                {/* Input Type Toggle */}
+                <div className="flex space-x-2 mb-6">
+                  <Button
+                    onClick={() => setInputType('text')}
+                    variant={inputType === 'text' ? 'default' : 'outline'}
+                    className={inputType === 'text' ? 
+                      'bg-neon-magenta/20 border-neon-magenta text-neon-magenta' : 
+                      'border-gray-600 text-gray-400 hover:border-neon-magenta hover:text-neon-magenta'
+                    }
+                  >
+                    <FileText size={16} className="mr-2" />
+                    Text Input
+                  </Button>
+                  <Button
+                    onClick={() => setInputType('file')}
+                    variant={inputType === 'file' ? 'default' : 'outline'}
+                    className={inputType === 'file' ? 
+                      'bg-neon-magenta/20 border-neon-magenta text-neon-magenta' : 
+                      'border-gray-600 text-gray-400 hover:border-neon-magenta hover:text-neon-magenta'
+                    }
+                  >
+                    <Upload size={16} className="mr-2" />
+                    File Upload
+                  </Button>
+                </div>
+
+                {inputType === 'text' ? (
+                  <div className="space-y-4">
+                    {/* Content Type Selector */}
+                    <div>
+                      <label className="block text-white mb-2">Content Type</label>
+                      <select
+                        value={contentType}
+                        onChange={(e) => setContentType(e.target.value)}
+                        className="w-full bg-gray-900/50 border border-gray-600 text-white p-2 rounded focus:border-neon-magenta"
+                      >
+                        <option value="text">General Text</option>
+                        <option value="email">Email Campaign</option>
+                        <option value="social">Social Media Post</option>
+                        <option value="blog">Blog Article</option>
+                        <option value="ad">Advertisement</option>
+                      </select>
+                    </div>
+                    
                     <Textarea
-                      placeholder="Enter your marketing content here (emails, captions, blogs, etc.)..."
+                      placeholder="Paste your marketing content here..."
                       value={textContent}
                       onChange={(e) => setTextContent(e.target.value)}
-                      className="min-h-[200px] bg-gray-900/50 border-gray-600 text-white placeholder-gray-400 focus:border-neon-magenta focus:ring-neon-magenta resize-none"
+                      className="min-h-[300px] bg-gray-900/50 border-gray-600 text-white placeholder-gray-400 focus:border-neon-magenta focus:ring-neon-magenta resize-none"
                     />
-                    
-                    <Button
-                      onClick={handleTextAnalyze}
-                      disabled={isAnalyzing || !textContent.trim()}
-                      className="w-full bg-neon-magenta/20 border border-neon-magenta text-neon-magenta hover:bg-neon-magenta hover:text-black transition-all"
-                    >
-                      {isAnalyzing ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neon-magenta mr-2"></div>
-                          Analyzing Content...
-                        </>
-                      ) : (
-                        <>
-                          <Search size={16} className="mr-2" />
-                          Analyze Text
-                        </>
-                      )}
-                    </Button>
-                  </TabsContent>
-                  
-                  <TabsContent value="file" className="space-y-4">
-                    <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-neon-magenta/50 transition-colors">
-                      <FileText size={48} className="mx-auto mb-4 text-gray-500" />
-                      <p className="text-gray-300 mb-4">
-                        Upload marketing files for analysis
-                      </p>
-                      <p className="text-sm text-gray-500 mb-4">
-                        Supports: .docx, .pdf, .txt files
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* File Upload */}
+                    <div className="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-neon-magenta transition-colors">
+                      <Upload size={48} className="mx-auto mb-4 text-gray-500" />
+                      <p className="text-gray-400 mb-4">
+                        Drop files here or click to upload
                       </p>
                       <input
                         type="file"
                         multiple
-                        accept=".docx,.pdf,.txt,.doc"
+                        accept=".txt,.docx,.pdf"
                         onChange={handleFileUpload}
                         className="hidden"
                         id="file-upload"
                       />
                       <Button
-                        variant="outline"
                         onClick={() => document.getElementById('file-upload')?.click()}
-                        className="border-neon-magenta text-neon-magenta hover:bg-neon-magenta/20"
+                        className="bg-neon-magenta/20 border border-neon-magenta text-neon-magenta hover:bg-neon-magenta hover:text-black"
                       >
-                        <Upload size={16} className="mr-2" />
-                        Select Files
+                        Choose Files
                       </Button>
+                      <p className="text-xs text-gray-500 mt-2">
+                        Supports .txt, .docx, .pdf files
+                      </p>
                     </div>
-                    
-                    {selectedFiles && selectedFiles.length > 0 && (
+
+                    {/* Selected Files */}
+                    {selectedFiles.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-sm text-gray-300">Selected Files:</p>
-                        {Array.from(selectedFiles).map((file, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-gray-800/50 rounded">
-                            <span className="text-sm text-white">{file.name}</span>
-                            <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
+                        <h4 className="text-white font-semibold">Selected Files:</h4>
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-gray-800/50 p-3 rounded">
+                            <div className="flex items-center space-x-2">
+                              <FileText size={16} className="text-neon-magenta" />
+                              <span className="text-white text-sm">{file.name}</span>
+                              <span className="text-gray-400 text-xs">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeFile(index)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 size={16} />
+                            </Button>
                           </div>
                         ))}
-                        
-                        <Button
-                          onClick={handleFileAnalyze}
-                          disabled={isAnalyzing}
-                          className="w-full bg-neon-magenta/20 border border-neon-magenta text-neon-magenta hover:bg-neon-magenta hover:text-black transition-all"
-                        >
-                          {isAnalyzing ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neon-magenta mr-2"></div>
-                              Analyzing Files...
-                            </>
-                          ) : (
-                            <>
-                              <Search size={16} className="mr-2" />
-                              Analyze Files
-                            </>
-                          )}
-                        </Button>
                       </div>
                     )}
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={isAnalyzing || (inputType === 'text' ? !textContent.trim() : selectedFiles.length === 0)}
+                  className="w-full mt-6 bg-neon-magenta/20 border border-neon-magenta text-neon-magenta hover:bg-neon-magenta hover:text-black transition-all"
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-neon-magenta mr-2"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Shield size={16} className="mr-2" />
+                      Analyze Content
+                    </>
+                  )}
+                </Button>
               </div>
             </Card>
 
@@ -272,13 +355,27 @@ const AdShield = () => {
                 
                 {isAnalyzing ? (
                   <LoadingShimmer />
-                ) : analysis ? (
-                  <ThreatAnalysis analysis={analysis} />
+                ) : analyses.length > 0 ? (
+                  <div className="space-y-6">
+                    {analyses.map((analysis, index) => (
+                      <div key={index}>
+                        {selectedFiles.length > 0 && (
+                          <div className="mb-4 pb-2 border-b border-gray-700">
+                            <h3 className="text-white font-semibold flex items-center">
+                              <FileText size={16} className="mr-2 text-neon-magenta" />
+                              {selectedFiles[index]?.name || `Analysis ${index + 1}`}
+                            </h3>
+                          </div>
+                        )}
+                        <ThreatAnalysis analysis={analysis} />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="flex items-center justify-center h-64 text-gray-500 text-center">
                     <div>
-                      <Search size={48} className="mx-auto mb-4 opacity-50" />
-                      <p>Select content or upload files to begin analysis</p>
+                      <AlertTriangle size={48} className="mx-auto mb-4 opacity-50" />
+                      <p>Upload content or files to begin analysis</p>
                     </div>
                   </div>
                 )}

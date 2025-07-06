@@ -9,6 +9,72 @@ import LoadingShimmer from "@/components/LoadingShimmer";
 import ThreatAnalysis from "@/components/ThreatAnalysis";
 import GeneratedContent from "@/components/GeneratedContent";
 
+// Mock analysis function
+const mockAnalyzePrompt = (prompt: string) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const lowercasePrompt = prompt.toLowerCase();
+      
+      // Check for high-risk patterns
+      const highRiskPatterns = ['urgent', 'act now', 'limited time', 'expires', 'discount ends', 'hurry', 'last chance'];
+      const mediumRiskPatterns = ['free', 'guaranteed', 'no risk', 'amazing deal', 'incredible offer'];
+      const manipulativePatterns = ['you must', 'dont miss', 'everyone is', 'secret', 'exclusive'];
+      
+      const hasHighRisk = highRiskPatterns.some(pattern => lowercasePrompt.includes(pattern));
+      const hasMediumRisk = mediumRiskPatterns.some(pattern => lowercasePrompt.includes(pattern));
+      const hasManipulative = manipulativePatterns.some(pattern => lowercasePrompt.includes(pattern));
+      
+      let threatLevel = 'safe';
+      let confidence = 0.85;
+      let attackTypes: string[] = [];
+      let recommendation = "This prompt appears to be safe for marketing use. It follows ethical guidelines and doesn't contain manipulative language.";
+      
+      if (hasHighRisk || hasManipulative) {
+        threatLevel = 'high';
+        confidence = 0.92;
+        attackTypes = ['urgency-manipulation', 'scarcity-tactics'];
+        if (hasManipulative) attackTypes.push('psychological-pressure');
+        recommendation = "This prompt contains high-risk elements that could be considered manipulative. Consider rephrasing to be more transparent and less pressuring.";
+      } else if (hasMediumRisk) {
+        threatLevel = 'medium';
+        confidence = 0.78;
+        attackTypes = ['promotional-language'];
+        recommendation = "This prompt contains moderate risk elements. While not explicitly harmful, consider toning down promotional language for better compliance.";
+      }
+      
+      resolve({
+        threat_level: threatLevel,
+        confidence: confidence,
+        attack_types: attackTypes,
+        recommendation: recommendation,
+        content_type: 'marketing-prompt',
+        metadata: {
+          pattern_score: Math.random() * 0.8 + 0.1,
+          ml_score: Math.random() * 0.9 + 0.05,
+          processing_time: Math.random() * 150 + 50,
+          prompt_length: prompt.length
+        }
+      });
+    }, 1500); // Simulate API delay
+  });
+};
+
+// Mock content generation
+const mockGenerateContent = (prompt: string) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const templates = [
+        `Here's your optimized marketing content:\n\n"${prompt}"\n\nThis version maintains your key message while ensuring compliance with ethical marketing standards. The tone is engaging yet respectful, avoiding pressure tactics while still motivating action.`,
+        `Generated marketing copy:\n\n"${prompt}"\n\nThis content has been refined to be more inclusive and transparent. It focuses on value proposition rather than urgency, making it suitable for diverse audiences while maintaining effectiveness.`,
+        `Your enhanced marketing message:\n\n"${prompt}"\n\nThis version emphasizes benefits and authenticity. It's designed to build trust with your audience while driving engagement through genuine value rather than manipulation.`
+      ];
+      
+      const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+      resolve({ generated_text: randomTemplate });
+    }, 2000);
+  });
+};
+
 const GuardPrompt = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -31,20 +97,7 @@ const GuardPrompt = () => {
 
     setIsAnalyzing(true);
     try {
-      const response = await fetch('http://127.0.0.1:8056/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          prompt,
-          user_id: "anonymous",
-          include_pii: true,
-          confidence_threshold: 1
-        })
-      });
-
-      const data = await response.json();
+      const data = await mockAnalyzePrompt(prompt);
       setAnalysis(data);
       
       const isSafe = data.threat_level === 'safe';
@@ -70,15 +123,7 @@ const GuardPrompt = () => {
 
     setIsGenerating(true);
     try {
-      const response = await fetch('/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt })
-      });
-
-      const data = await response.json();
+      const data = await mockGenerateContent(prompt);
       setGeneratedContent(data.generated_text);
       
       toast({
