@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Search, Database, Eye, ChevronRight } from "lucide-react";
@@ -159,7 +158,8 @@ const Index = () => {
 
         {/* Footer */}
         <div className="mt-16 text-center text-gray-500 text-sm">
-          <p>© 2024 Sentinel.AI - Securing the Future of Marketing</p>
+          <p>2025 Sentinel.AI - Securing the Future of Marketing</p>
+          <p>Made by Team XYZ of RVCE </p>
         </div>
       </div>
     </div>

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Upload, FileText, Trash2, AlertTriangle } from "lucide-react";
@@ -32,146 +31,29 @@ interface AdShieldAnalysisResult {
   suggestions: string[];
 }
 
-// Mock analysis function for text content
-const mockAnalyzeContent = (content: string, contentType: string = 'text'): Promise<AdShieldAnalysisResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const lowercaseContent = content.toLowerCase();
-      
-      // Different risk patterns for different content types
-      const emailRiskPatterns = ['act fast', 'limited offer', 'dont delay', 'expires soon', 'urgent action'];
-      const socialRiskPatterns = ['follow for follow', 'like if you agree', 'share or miss out', 'tag friends'];
-      const blogRiskPatterns = ['clickbait', 'you wont believe', 'shocking truth', 'secret revealed'];
-      const generalRiskPatterns = ['guaranteed results', 'no questions asked', 'risk free', 'amazing deal'];
-      
-      let riskPatterns = [...generalRiskPatterns];
-      if (contentType === 'email') riskPatterns.push(...emailRiskPatterns);
-      if (contentType === 'social') riskPatterns.push(...socialRiskPatterns);
-      if (contentType === 'blog') riskPatterns.push(...blogRiskPatterns);
-      
-      const hasHighRisk = riskPatterns.some(pattern => lowercaseContent.includes(pattern));
-      const hasMediumRisk = ['free', 'discount', 'special offer', 'limited'].some(pattern => lowercaseContent.includes(pattern));
-      
-      let threatLevel = 'safe';
-      let isMalicious = false;
-      let confidence = 0.82;
-      let attackTypes: string[] = [];
-      let flaggedPatterns: string[] = [];
-      let recommendation = "This content appears to be compliant with ethical marketing standards. No significant risks detected.";
-      let suggestions: string[] = [];
-      
-      if (hasHighRisk) {
-        threatLevel = 'high';
-        isMalicious = true;
-        confidence = 0.94;
-        attackTypes = ['urgency_manipulation', 'false_scarcity'];
-        flaggedPatterns = ['False urgency claim', 'Misleading free offer'];
-        if (contentType === 'email') {
-          attackTypes.push('email_spam_indicators');
-          flaggedPatterns.push('Email spam indicators detected');
-        }
-        if (contentType === 'social') {
-          attackTypes.push('engagement_baiting');
-          flaggedPatterns.push('Engagement baiting detected');
-        }
-        recommendation = "⚠️ HIGH RISK: Content contains high-risk elements that may violate platform policies or ethical guidelines. Consider revising the messaging to be more transparent.";
-        suggestions = [
-          'Remove misleading urgency/scarcity claims',
-          'Add proper disclaimers and terms',
-          'Focus on genuine value proposition'
-        ];
-      } else if (hasMediumRisk) {
-        threatLevel = 'medium';
-        isMalicious = false;
-        confidence = 0.76;
-        attackTypes = ['promotional_language'];
-        flaggedPatterns = ['Promotional language detected'];
-        recommendation = "WARN: This content contains moderate promotional language. While not harmful, consider adding disclaimers or terms for better compliance.";
-        suggestions = [
-          'Add appropriate disclaimers',
-          'Consider softening promotional language'
-        ];
-      }
-      
-      resolve({
-        is_malicious: isMalicious,
-        threat_level: threatLevel,
-        confidence: confidence,
-        attack_types: attackTypes,
-        flagged_patterns: flaggedPatterns,
-        processing_time: Math.random() * 200 + 100,
-        recommendation: recommendation,
-        pii_detected: {},
-        metadata: {
-          content_length: content.length,
-          pattern_score: Math.random() * 0.7 + 0.2,
-          ml_score: Math.random() * 0.85 + 0.1,
-          client_id: 'anonymous',
-          timestamp: new Date().toISOString()
-        },
-        content_type: contentType,
-        compliance_score: hasHighRisk ? 10 : hasMediumRisk ? 60 : 100,
-        marketing_score: hasHighRisk ? 20 : hasMediumRisk ? 70 : 85,
-        suggestions: suggestions
-      });
-    }, 1800); // Simulate API delay
+// Replace mockAnalyzeContent with real API call
+const analyzeContent = async (content: string, contentType: string = 'text'): Promise<AdShieldAnalysisResult> => {
+  const response = await fetch("/sentinel/adshield/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content, content_type: contentType })
   });
+  if (!response.ok) throw new Error("API error");
+  return response.json();
 };
 
-// Mock file analysis
-const mockAnalyzeFile = (file: File): Promise<AdShieldAnalysisResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const fileType = file.name.toLowerCase().includes('email') ? 'email' : 
-                      file.name.toLowerCase().includes('social') ? 'social' :
-                      file.name.toLowerCase().includes('blog') ? 'blog' : 'document';
-      
-      // Simulate different risk levels based on file name
-      let threatLevel = 'safe';
-      let isMalicious = false;
-      let attackTypes: string[] = [];
-      let flaggedPatterns: string[] = [];
-      let suggestions: string[] = [];
-      
-      if (file.name.toLowerCase().includes('urgent') || file.name.toLowerCase().includes('sale')) {
-        threatLevel = 'high';
-        isMalicious = true;
-        attackTypes = ['urgency_manipulation', 'sales_pressure'];
-        flaggedPatterns = ['Urgent language detected', 'Sales pressure tactics'];
-        suggestions = ['Remove urgent language', 'Focus on value instead of pressure'];
-      } else if (file.name.toLowerCase().includes('promo') || file.name.toLowerCase().includes('offer')) {
-        threatLevel = 'medium';
-        isMalicious = false;
-        attackTypes = ['promotional_language'];
-        flaggedPatterns = ['Promotional content detected'];
-        suggestions = ['Add disclaimers for promotional content'];
-      }
-      
-      resolve({
-        is_malicious: isMalicious,
-        threat_level: threatLevel,
-        confidence: Math.random() * 0.3 + 0.7,
-        attack_types: attackTypes,
-        flagged_patterns: flaggedPatterns,
-        processing_time: Math.random() * 300 + 150,
-        recommendation: threatLevel === 'safe' ? 
-          "File content appears to be compliant with marketing standards." :
-          "File contains elements that may need review for compliance.",
-        pii_detected: {},
-        metadata: {
-          content_length: Math.floor(Math.random() * 2000) + 500,
-          pattern_score: Math.random() * 0.8 + 0.1,
-          ml_score: Math.random() * 0.9 + 0.05,
-          client_id: 'anonymous',
-          timestamp: new Date().toISOString()
-        },
-        content_type: fileType,
-        compliance_score: threatLevel === 'high' ? 10 : threatLevel === 'medium' ? 60 : 100,
-        marketing_score: threatLevel === 'high' ? 20 : threatLevel === 'medium' ? 70 : 85,
-        suggestions: suggestions
-      });
-    }, 2500);
+// Replace mockAnalyzeFile with real API call (multipart/form-data)
+const analyzeFiles = async (files: File[]): Promise<AdShieldAnalysisResult[]> => {
+  const formData = new FormData();
+  files.forEach(file => formData.append('files', file)); // use 'files' for multi-file endpoint
+  const response = await fetch("/sentinel/analyze/files", {
+    method: "POST",
+    body: formData
   });
+  if (!response.ok) throw new Error("API error");
+  const data = await response.json();
+  // Extract .analysis from each result
+  return data.map((r: any) => r.analysis);
 };
 
 const AdShield = () => {
@@ -231,7 +113,7 @@ const AdShield = () => {
     
     try {
       if (inputType === 'text') {
-        const result = await mockAnalyzeContent(textContent, contentType);
+        const result = await analyzeContent(textContent, contentType); // Use real API
         setAnalyses([result]);
         
         const isSafe = result.threat_level === 'safe';
@@ -240,15 +122,12 @@ const AdShield = () => {
           description: isSafe ? "Content appears compliant" : "Content contains potential risks"
         });
       } else {
-        const results = await Promise.all(
-          selectedFiles.map(file => mockAnalyzeFile(file))
-        );
-        setAnalyses(results);
-        
-        const riskCount = results.filter(r => r.threat_level !== 'safe').length;
+        const analyses = await analyzeFiles(selectedFiles); // Use new multi-file API
+        setAnalyses(analyses);
+        const riskCount = analyses.filter(r => r.threat_level !== 'safe').length;
         toast({
           title: riskCount === 0 ? "All Files SAFE ✅" : `${riskCount} Risk(s) Found 🚫`,
-          description: `Analyzed ${results.length} file(s)`
+          description: `Analyzed ${analyses.length} file(s)`
         });
       }
     } catch (error) {

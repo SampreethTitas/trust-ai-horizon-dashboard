@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Send, Copy, Share } from "lucide-react";
@@ -42,90 +41,26 @@ interface GenerationResult {
   generated_text: string;
 }
 
-// Mock analysis function
-const mockAnalyzePrompt = (prompt: string): Promise<GuardPromptApiResponse> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const lowercasePrompt = prompt.toLowerCase();
-      
-      // Check for high-risk patterns
-      const highRiskPatterns = ['urgent', 'act now', 'limited time', 'expires', 'discount ends', 'hurry', 'last chance'];
-      const mediumRiskPatterns = ['free', 'guaranteed', 'no risk', 'amazing deal', 'incredible offer'];
-      const manipulativePatterns = ['you must', 'dont miss', 'everyone is', 'secret', 'exclusive'];
-      
-      const hasHighRisk = highRiskPatterns.some(pattern => lowercasePrompt.includes(pattern));
-      const hasMediumRisk = mediumRiskPatterns.some(pattern => lowercasePrompt.includes(pattern));
-      const hasManipulative = manipulativePatterns.some(pattern => lowercasePrompt.includes(pattern));
-      
-      let threatLevel = 'safe';
-      let isMalicious = false;
-      let confidence = 0.85;
-      let attackTypes: string[] = [];
-      let flaggedPatterns: string[] = [];
-      let recommendation = "Content appears to be safe for marketing use. It follows ethical guidelines and doesn't contain manipulative language.";
-      
-      if (hasHighRisk || hasManipulative) {
-        threatLevel = 'high';
-        isMalicious = true;
-        confidence = 0.92;
-        attackTypes = ['urgency_manipulation', 'scarcity_tactics'];
-        flaggedPatterns = ['False urgency claim', 'Scarcity manipulation'];
-        if (hasManipulative) {
-          attackTypes.push('psychological_pressure');
-          flaggedPatterns.push('Psychological pressure tactics');
-        }
-        recommendation = "⚠️ HIGH RISK: Content contains high-risk elements that could be considered manipulative. Consider rephrasing to be more transparent and less pressuring.";
-      } else if (hasMediumRisk) {
-        threatLevel = 'medium';
-        isMalicious = false;
-        confidence = 0.78;
-        attackTypes = ['promotional_language'];
-        flaggedPatterns = ['Promotional language detected'];
-        recommendation = "WARN: Potentially risky content. While not explicitly harmful, consider toning down promotional language for better compliance.";
-      }
-      
-      resolve({
-        success: true,
-        timestamp: new Date().toISOString(),
-        analysis: {
-          is_malicious: isMalicious,
-          threat_level: threatLevel,
-          confidence: confidence,
-          attack_types: attackTypes,
-          flagged_patterns: flaggedPatterns,
-          processing_time: Math.random() * 150 + 50,
-          recommendation: recommendation,
-          pii_detected: {},
-          metadata: {
-            pattern_score: Math.random() * 0.8 + 0.1,
-            ml_score: Math.random() * 0.9 + 0.05,
-            prompt_length: prompt.length,
-            user_id: 'anonymous',
-            pii_types_found: 0,
-            pii_count: 0
-          }
-        },
-        processing_time: Math.random() * 0.001,
-        request_id: `req_${Date.now()}`
-      });
-    }, 1500); // Simulate API delay
+// Replace mockAnalyzePrompt with real API call
+const analyzePrompt = async (prompt: string): Promise<GuardPromptApiResponse> => {
+  const response = await fetch("/sentinel/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
   });
+  if (!response.ok) throw new Error("API error");
+  return response.json();
 };
 
-// Mock content generation
-const mockGenerateContent = (prompt: string): Promise<GenerationResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const templates = [
-        `Here's your optimized marketing content:\n\n"${prompt}"\n\nThis version maintains your key message while ensuring compliance with ethical marketing standards. The tone is engaging yet respectful, avoiding pressure tactics while still motivating action.`,
-        `Generated marketing copy:\n\n"${prompt}"\n\nThis content has been refined to be more inclusive and transparent. It focuses on value proposition rather than urgency, making it suitable for diverse audiences while maintaining effectiveness.`,
-        `Your enhanced marketing message:\n\n"${prompt}"\n\nThis version emphasizes benefits and authenticity. It's designed to build trust with your audience while driving engagement through genuine value rather than manipulation.`
-      ];
-      
-      const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-      resolve({ generated_text: randomTemplate });
-    }, 2000);
+// Replace mockGenerateContent with real API call
+const generateContent = async (prompt: string): Promise<GenerationResult> => {
+  const response = await fetch("/gemini/agents/generate/blog", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
   });
+  if (!response.ok) throw new Error("API error");
+  return response.json();
 };
 
 const GuardPrompt = () => {
@@ -150,7 +85,7 @@ const GuardPrompt = () => {
 
     setIsAnalyzing(true);
     try {
-      const response = await mockAnalyzePrompt(prompt);
+      const response = await analyzePrompt(prompt); // Use real API
       const analysisData = response.analysis;
       setAnalysis(analysisData);
       
@@ -177,7 +112,7 @@ const GuardPrompt = () => {
 
     setIsGenerating(true);
     try {
-      const data = await mockGenerateContent(prompt);
+      const data = await generateContent(prompt); // Use real API
       setGeneratedContent(data.generated_text);
       
       toast({
