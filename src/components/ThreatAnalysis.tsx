@@ -1,5 +1,5 @@
 
-import { AlertTriangle, CheckCircle, XCircle, Clock, Target, Zap } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, Clock, Target, Zap, Flag, Lightbulb } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -15,8 +15,19 @@ interface ThreatAnalysisProps {
       ml_score?: number;
       processing_time?: number;
       prompt_length?: number;
+      content_length?: number;
+      user_id?: string;
+      client_id?: string;
+      timestamp?: string;
+      pii_types_found?: number;
+      pii_count?: number;
     };
     content_type?: string;
+    flagged_patterns?: string[];
+    suggestions?: string[];
+    compliance_score?: number;
+    marketing_score?: number;
+    is_malicious?: boolean;
   };
 }
 
@@ -96,6 +107,48 @@ const ThreatAnalysis = ({ analysis }: ThreatAnalysisProps) => {
         />
       </Card>
 
+      {/* Compliance and Marketing Scores */}
+      {(analysis.compliance_score !== undefined || analysis.marketing_score !== undefined) && (
+        <div className="grid grid-cols-2 gap-4">
+          {analysis.compliance_score !== undefined && (
+            <Card className="bg-gray-800/30 border-gray-600 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white font-semibold text-sm">Compliance</span>
+                <span className={`font-bold ${
+                  analysis.compliance_score >= 80 ? 'text-neon-green' :
+                  analysis.compliance_score >= 50 ? 'text-yellow-500' :
+                  'text-neon-red'
+                }`}>
+                  {analysis.compliance_score}%
+                </span>
+              </div>
+              <Progress 
+                value={analysis.compliance_score} 
+                className="h-2"
+              />
+            </Card>
+          )}
+          {analysis.marketing_score !== undefined && (
+            <Card className="bg-gray-800/30 border-gray-600 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white font-semibold text-sm">Marketing</span>
+                <span className={`font-bold ${
+                  analysis.marketing_score >= 80 ? 'text-neon-green' :
+                  analysis.marketing_score >= 50 ? 'text-yellow-500' :
+                  'text-neon-red'
+                }`}>
+                  {analysis.marketing_score}%
+                </span>
+              </div>
+              <Progress 
+                value={analysis.marketing_score} 
+                className="h-2"
+              />
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Attack Types */}
       {analysis.attack_types && analysis.attack_types.length > 0 && (
         <Card className="bg-gray-800/30 border-gray-600 p-4">
@@ -111,8 +164,29 @@ const ThreatAnalysis = ({ analysis }: ThreatAnalysisProps) => {
                 className="bg-neon-red/10 text-neon-red border-neon-red animate-fade-in"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                {type}
+                {type.replace(/_/g, ' ')}
               </Badge>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Flagged Patterns */}
+      {analysis.flagged_patterns && analysis.flagged_patterns.length > 0 && (
+        <Card className="bg-gray-800/30 border-gray-600 p-4">
+          <h4 className="text-white font-semibold mb-3 flex items-center">
+            <Flag className="mr-2 text-yellow-500" size={18} />
+            Flagged Patterns
+          </h4>
+          <div className="space-y-2">
+            {analysis.flagged_patterns.map((pattern, index) => (
+              <div 
+                key={index}
+                className="flex items-center space-x-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/20"
+              >
+                <AlertTriangle size={14} className="text-yellow-500 flex-shrink-0" />
+                <span className="text-gray-300 text-sm">{pattern}</span>
+              </div>
             ))}
           </div>
         </Card>
@@ -128,6 +202,27 @@ const ThreatAnalysis = ({ analysis }: ThreatAnalysisProps) => {
           {analysis.recommendation}
         </p>
       </Card>
+
+      {/* Suggestions */}
+      {analysis.suggestions && analysis.suggestions.length > 0 && (
+        <Card className="bg-gray-800/30 border-gray-600 p-4">
+          <h4 className="text-white font-semibold mb-3 flex items-center">
+            <Lightbulb className="mr-2 text-neon-teal" size={18} />
+            Suggestions
+          </h4>
+          <ul className="space-y-2">
+            {analysis.suggestions.map((suggestion, index) => (
+              <li 
+                key={index}
+                className="flex items-start space-x-2 text-gray-300"
+              >
+                <span className="text-neon-teal mt-1">•</span>
+                <span className="text-sm">{suggestion}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* Metadata */}
       {analysis.metadata && (
@@ -163,9 +258,25 @@ const ThreatAnalysis = ({ analysis }: ThreatAnalysisProps) => {
             )}
             {analysis.metadata.prompt_length !== undefined && (
               <div className="flex justify-between">
-                <span className="text-gray-400">Content Length:</span>
+                <span className="text-gray-400">Prompt Length:</span>
                 <span className="text-white font-mono">
                   {analysis.metadata.prompt_length} chars
+                </span>
+              </div>
+            )}
+            {analysis.metadata.content_length !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Content Length:</span>
+                <span className="text-white font-mono">
+                  {analysis.metadata.content_length} chars
+                </span>
+              </div>
+            )}
+            {analysis.metadata.pii_types_found !== undefined && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">PII Types:</span>
+                <span className="text-white font-mono">
+                  {analysis.metadata.pii_types_found}
                 </span>
               </div>
             )}

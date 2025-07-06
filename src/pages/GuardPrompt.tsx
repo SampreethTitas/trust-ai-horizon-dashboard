@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Shield, Send, Copy, Share } from "lucide-react";
@@ -10,18 +11,31 @@ import ThreatAnalysis from "@/components/ThreatAnalysis";
 import GeneratedContent from "@/components/GeneratedContent";
 
 // Type definitions for API responses
-interface AnalysisResult {
+interface GuardPromptAnalysisResult {
+  is_malicious: boolean;
   threat_level: string;
   confidence: number;
   attack_types: string[];
+  flagged_patterns: string[];
+  processing_time: number;
   recommendation: string;
-  content_type: string;
+  pii_detected: Record<string, any>;
   metadata: {
     pattern_score: number;
     ml_score: number;
-    processing_time: number;
     prompt_length: number;
+    user_id: string;
+    pii_types_found: number;
+    pii_count: number;
   };
+}
+
+interface GuardPromptApiResponse {
+  success: boolean;
+  timestamp: string;
+  analysis: GuardPromptAnalysisResult;
+  processing_time: number;
+  request_id: string;
 }
 
 interface GenerationResult {
@@ -29,7 +43,7 @@ interface GenerationResult {
 }
 
 // Mock analysis function
-const mockAnalyzePrompt = (prompt: string): Promise<AnalysisResult> => {
+const mockAnalyzePrompt = (prompt: string): Promise<GuardPromptApiResponse> => {
   return new Promise((resolve) => {
     setTimeout(() => {
       const lowercasePrompt = prompt.toLowerCase();
@@ -44,35 +58,55 @@ const mockAnalyzePrompt = (prompt: string): Promise<AnalysisResult> => {
       const hasManipulative = manipulativePatterns.some(pattern => lowercasePrompt.includes(pattern));
       
       let threatLevel = 'safe';
+      let isMalicious = false;
       let confidence = 0.85;
       let attackTypes: string[] = [];
-      let recommendation = "This prompt appears to be safe for marketing use. It follows ethical guidelines and doesn't contain manipulative language.";
+      let flaggedPatterns: string[] = [];
+      let recommendation = "Content appears to be safe for marketing use. It follows ethical guidelines and doesn't contain manipulative language.";
       
       if (hasHighRisk || hasManipulative) {
         threatLevel = 'high';
+        isMalicious = true;
         confidence = 0.92;
-        attackTypes = ['urgency-manipulation', 'scarcity-tactics'];
-        if (hasManipulative) attackTypes.push('psychological-pressure');
-        recommendation = "This prompt contains high-risk elements that could be considered manipulative. Consider rephrasing to be more transparent and less pressuring.";
+        attackTypes = ['urgency_manipulation', 'scarcity_tactics'];
+        flaggedPatterns = ['False urgency claim', 'Scarcity manipulation'];
+        if (hasManipulative) {
+          attackTypes.push('psychological_pressure');
+          flaggedPatterns.push('Psychological pressure tactics');
+        }
+        recommendation = "⚠️ HIGH RISK: Content contains high-risk elements that could be considered manipulative. Consider rephrasing to be more transparent and less pressuring.";
       } else if (hasMediumRisk) {
         threatLevel = 'medium';
+        isMalicious = false;
         confidence = 0.78;
-        attackTypes = ['promotional-language'];
-        recommendation = "This prompt contains moderate risk elements. While not explicitly harmful, consider toning down promotional language for better compliance.";
+        attackTypes = ['promotional_language'];
+        flaggedPatterns = ['Promotional language detected'];
+        recommendation = "WARN: Potentially risky content. While not explicitly harmful, consider toning down promotional language for better compliance.";
       }
       
       resolve({
-        threat_level: threatLevel,
-        confidence: confidence,
-        attack_types: attackTypes,
-        recommendation: recommendation,
-        content_type: 'marketing-prompt',
-        metadata: {
-          pattern_score: Math.random() * 0.8 + 0.1,
-          ml_score: Math.random() * 0.9 + 0.05,
+        success: true,
+        timestamp: new Date().toISOString(),
+        analysis: {
+          is_malicious: isMalicious,
+          threat_level: threatLevel,
+          confidence: confidence,
+          attack_types: attackTypes,
+          flagged_patterns: flaggedPatterns,
           processing_time: Math.random() * 150 + 50,
-          prompt_length: prompt.length
-        }
+          recommendation: recommendation,
+          pii_detected: {},
+          metadata: {
+            pattern_score: Math.random() * 0.8 + 0.1,
+            ml_score: Math.random() * 0.9 + 0.05,
+            prompt_length: prompt.length,
+            user_id: 'anonymous',
+            pii_types_found: 0,
+            pii_count: 0
+          }
+        },
+        processing_time: Math.random() * 0.001,
+        request_id: `req_${Date.now()}`
       });
     }, 1500); // Simulate API delay
   });
@@ -101,7 +135,7 @@ const GuardPrompt = () => {
   const [prompt, setPrompt] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analysis, setAnalysis] = useState<GuardPromptAnalysisResult | null>(null);
   const [generatedContent, setGeneratedContent] = useState("");
 
   const handleAnalyze = async () => {
@@ -116,10 +150,11 @@ const GuardPrompt = () => {
 
     setIsAnalyzing(true);
     try {
-      const data = await mockAnalyzePrompt(prompt);
-      setAnalysis(data);
+      const response = await mockAnalyzePrompt(prompt);
+      const analysisData = response.analysis;
+      setAnalysis(analysisData);
       
-      const isSafe = data.threat_level === 'safe';
+      const isSafe = analysisData.threat_level === 'safe';
       toast({
         title: isSafe ? "Prompt is SAFE ✅" : "Blocked 🚫",
         description: isSafe ? "This prompt appears to be safe for use" : "This prompt contains potential risks",
